@@ -1,0 +1,19 @@
+{
+  "globalHeaders": {
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "Cross-Origin-Opener-Policy": "same-origin"
+  },
+  "routes": [
+    { "route": "/sw.js", "headers": { "Cache-Control": "no-cache", "Service-Worker-Allowed": "/" } },
+    { "route": "/index.html", "headers": { "Cache-Control": "no-cache" } },
+    { "route": "/app.js", "headers": { "Cache-Control": "no-cache" } },
+    { "route": "/manifest.webmanifest", "headers": { "Cache-Control": "no-cache" } }
+  ],
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json"
+  }
+}
