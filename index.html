@@ -340,16 +340,53 @@
   .share-panel .row{display:flex;flex-wrap:wrap;gap:10px;}
   .share-panel .btn,.share-panel .btn-ghost{flex:1 1 180px;text-align:center;}
   .sticky-actions{position:sticky;bottom:0;background:rgba(255,255,255,.96);padding:10px 0 calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);z-index:5;}
-  .pseaf-sigdraw{background:#fff;color:var(--ultramarine);border:1px dashed var(--ultramarine);border-radius:8px;padding:8px 12px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;}
-  .pseaf-sig.has-sig .pseaf-sigdraw{border-style:solid;}
-  body.sigpad-open{overflow:hidden;}
-  .sigpad-ov{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:12px;}
-  .sigpad{background:#fff;border-radius:14px;width:100%;max-width:720px;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.3);}
-  .sigpad-head b{display:block;color:var(--ultramarine);font-size:1rem;}
-  .sigpad-head span{display:block;font-size:.8rem;color:var(--grey);margin-bottom:10px;}
-  .sigpad-cv{display:block;width:100%;height:min(42vh,240px);border:1px solid var(--steel);border-radius:10px;background:#fbfbfb;touch-action:none;}
-  .sigpad-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:12px;}
+
+  /* ---- Signature controls: finger signing is the main option ---- */
+  .pseaf-sigbox{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;}
+  .pseaf-sigdraw{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--ultramarine);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;min-height:44px;}
+  .pseaf-sigdraw:focus-visible{outline:3px solid rgba(0,114,206,.45);outline-offset:2px;}
+  .pseaf-sigdraw .again{display:none;}
+  .pseaf-sig.has-sig .pseaf-sigdraw{background:#fff;color:var(--ultramarine);border:1px solid var(--ultramarine);}
+  .pseaf-sig.has-sig .pseaf-sigdraw .first{display:none;}
+  .pseaf-sig.has-sig .pseaf-sigdraw .again{display:inline;}
+  .pseaf-sig.needs-sig .pseaf-sigdraw{box-shadow:0 0 0 3px rgba(239,99,35,.45);}
+  .pseaf-sigimg{cursor:pointer;}
+  .pseaf-siglbl .pseaf-sigcta{border:none !important;background:none !important;padding:4px 2px !important;color:var(--azure) !important;text-decoration:underline;font-size:.8rem;}
+  @media(max-width:620px){
+    .pseaf-sigdraw{width:100%;padding:14px 16px;font-size:1rem;min-height:52px;}
+    .pseaf-sigbox .pseaf-sigimg{order:-1;max-height:70px;}
+    .pseaf-siglbl{flex:1 1 auto;}
+    .pseaf-siglbl .pseaf-sigcta{display:inline-block;width:auto;text-align:left;}
+  }
+
+  /* ---- Signing panel ---- */
+  body.sigpad-open{overflow:hidden;overscroll-behavior:none;}
+  .sigpad-ov{position:fixed;inset:0;background:rgba(10,20,40,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:12px;}
+  .sigpad{background:#fff;border-radius:14px;width:100%;max-width:760px;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;}
+  .sigpad-head b{display:block;color:var(--ultramarine);font-size:1.05rem;}
+  .sigpad-who{display:block;font-size:.88rem;color:var(--ink);margin-top:2px;}
+  .sigpad-tip{display:block;font-size:.78rem;color:var(--grey);margin:2px 0 10px;}
+  .sigpad-area{position:relative;flex:1 1 auto;height:min(46vh,280px);border:1px solid var(--steel);border-radius:10px;background:#fbfbfb;overflow:hidden;}
+  .sigpad-cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:crosshair;z-index:2;}
+  .sigpad-line{position:absolute;left:6%;right:6%;bottom:26%;border-bottom:2px solid #c8ccd6;z-index:1;pointer-events:none;}
+  .sigpad-line span{position:absolute;left:-2px;bottom:2px;color:#9aa1b0;font-size:22px;line-height:1;}
+  .sigpad-ph{position:absolute;left:0;right:0;top:34%;text-align:center;color:#b5bac6;font-size:1.1rem;z-index:1;pointer-events:none;}
+  .sigpad-msg{min-height:1.2em;font-size:.84rem;color:#a04a00;margin-top:8px;}
+  .sigpad-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:6px;}
+  .sigpad-actions .btn{min-height:46px;}
+  .sigpad-actions .btn:disabled{opacity:.45;cursor:not-allowed;}
+  /* Phones: use the whole screen */
+  @media(max-width:700px), (max-height:500px){
+    .sigpad-ov{padding:0;}
+    .sigpad{max-width:none;height:100%;border-radius:0;padding:calc(10px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));}
+    .sigpad-area{height:auto;flex:1 1 auto;min-height:160px;}
+    .sigpad-actions{justify-content:stretch;}
+    .sigpad-actions button{flex:1 1 30%;}
+  }
+  @media(orientation:landscape){ .sigpad-tip{display:none;} }
   @media(max-width:640px){.wrap{padding-left:14px;padding-right:14px;}.card{padding:18px 16px;}.summary dl{grid-template-columns:1fr;}}
+  .pseaf-sig.has-sig .pseaf-sigclear{font-size:.8rem;color:var(--grey);text-decoration:underline;padding:4px 2px;}
+  .pseaf-sig.has-sig .pseaf-sigclear::after{content:' Remove signature';}
 
 </style>
 </head>
@@ -424,7 +461,7 @@
 
   <footer class="page-foot"><div class="bar"></div>
     AWN Consulting Ltd, The Tecpro Building, IDA Business &amp; Technology Park, Clonshaugh, Dublin 17, D17 XD90 &nbsp;|&nbsp; A Trinity Consultants company
-    <div class="version">PSEAF Field App 1.0 &nbsp;|&nbsp; EHS-P-001-F1</div>
+    <div class="version">PSEAF Field App 1.1 &nbsp;|&nbsp; EHS-P-001-F1</div>
   </footer>
 </div>
 <script src="app.js"></script>
