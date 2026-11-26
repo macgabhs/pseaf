@@ -1,4 +1,4 @@
-/* AWN PSEAF Field App - app.js (version 1.0, built from Project Administration Portal 4.7) */
+/* AWN PSEAF Field App - app.js (version 1.1, built from Project Administration Portal 4.7) */
 'use strict';
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 /* =====================================================================
@@ -413,7 +413,7 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
     + '<p class="hint" style="margin-left:0;" id="'+p+'StaffHint">'
     +   (opts.siteWorkGate
           ? 'Confirm your details here'
-          : 'Record everyone working on the project, including the Project Manager. Enter the name and contact number for each person and add their signature: draw it on screen or upload an image.')
+          : 'Record everyone working on the project, including the Project Manager. Enter the name and contact number for each person and ask them to sign with their finger on screen.')
     + '</p>'
     + '<div id="'+p+'StaffRows"></div>'
     + '<div class="pseaf-req-msg" id="'+p+'StaffMsg"></div>'
@@ -633,12 +633,13 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
       + (noSig ? '' :
           '<span class="pseaf-cap">Signature</span>'
           + '<div class="pseaf-sigbox">'
+          +   '<button type="button" class="pseaf-sigdraw"><span aria-hidden="true">&#9997;</span>'
+          +     '<span class="first">Sign with finger</span><span class="again">Sign again</span></button>'
+          +   '<img class="pseaf-sigimg" alt="Signature. Tap to sign again.">'
           +   '<label class="pseaf-siglbl">'
           +     '<input type="file" class="pseaf-sigfile" accept="image/png,image/jpeg,image/gif,image/webp">'
-          +     '<span class="pseaf-sigcta">Upload image</span>'
+          +     '<span class="pseaf-sigcta">or upload an image</span>'
           +   '</label>'
-          +   '<button type="button" class="pseaf-sigdraw">Draw</button>'
-          +   '<img class="pseaf-sigimg" alt="Signature preview">'
           +   '<button type="button" class="pseaf-sigclear" title="Remove signature">&times;</button>'
           + '</div>')
       + '<button type="button" class="pseaf-del" title="Remove row">&times;</button>';
@@ -662,24 +663,29 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
       row.dataset.sig = '';
       preview.removeAttribute('src');
       row.classList.remove('has-sig');
-      cta.textContent = 'Upload image';
+      cta.textContent = 'or upload an image';
       fileInput.value = '';
       if(typeof onSigChange === 'function'){ onSigChange(); }
     }
     clearBtn.addEventListener('click', clearSig);
 
-    /* Draw a signature on screen (phones and tablets) */
+    /* Sign with a finger or stylus (phones and tablets) */
     const drawBtn = row.querySelector('.pseaf-sigdraw');
+    function openPad(){
+      const nameEl = row.querySelector('input[type="text"]');
+      const who = nameEl ? nameEl.value.trim() : '';
+      pseafDrawSignature(function(url){
+        row.dataset.sig = url;
+        preview.src = url;
+        row.classList.add('has-sig');
+        cta.textContent = 'or upload an image';
+        fileInput.value = '';
+        if(typeof onSigChange === 'function'){ onSigChange(); }
+      }, who);
+    }
     if(drawBtn && typeof pseafDrawSignature === 'function'){
-      drawBtn.addEventListener('click', function(){
-        pseafDrawSignature(function(url){
-          row.dataset.sig = url;
-          preview.src = url;
-          row.classList.add('has-sig');
-          cta.textContent = 'Replace signature';
-          if(typeof onSigChange === 'function'){ onSigChange(); }
-        });
-      });
+      drawBtn.addEventListener('click', openPad);
+      preview.addEventListener('click', openPad);
     }
 
     fileInput.addEventListener('change', function(){
@@ -711,7 +717,7 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
           row.dataset.sig = cv.toDataURL('image/png');
           preview.src = row.dataset.sig;
           row.classList.add('has-sig');
-          cta.textContent = 'Replace signature';
+          cta.textContent = 'or upload an image';
           if(typeof onSigChange === 'function'){ onSigChange(); }
         };
         img.onerror = function(){ cta.textContent = 'Could not read that image'; };
@@ -779,7 +785,7 @@ function pseafStaffMessage(p){
     el.textContent = (st.named - st.contacted) + ' of ' + st.named + ' recorded staff still need a contact number.';
     el.className = 'pseaf-req-msg show';
   } else if(st.signed < st.named){
-    el.textContent = (st.named - st.signed) + ' of ' + st.named + ' recorded staff still need a signature.';
+    el.textContent = (st.named - st.signed) + ' of ' + st.named + ' recorded staff still need to sign.';
     el.className = 'pseaf-req-msg show';
   } else {
     el.textContent = st.signed + ' of ' + st.named + ' staff recorded with contact details and signature.';
@@ -1616,7 +1622,7 @@ function pseafFileRuntime(){
         if(img){ img.src = r.sig; }
         row.classList.add('has-sig');
         var cta = row.querySelector('.pseaf-sigcta');
-        if(cta){ cta.textContent = 'Replace signature'; }
+        if(cta){ cta.textContent = 'or upload an image'; }
       }
     });
   }
@@ -1776,69 +1782,154 @@ function pseafTemplateFile(d){
 }
 
 /* =====================================================================
-   SIGNATURE PAD
-   Lets a signature be drawn with a finger or stylus on a phone or
-   tablet, as an alternative to uploading an image. The result is a
-   trimmed PNG data URI, the same format the upload route produces.
-   Serialised into the PSEAF file so it works there too.
+   FINGER SIGNATURE PAD
+   Opens a signing panel (full screen on phones) so a signature can be
+   written with a finger or stylus. Strokes are smoothed and the result is
+   cropped to the ink and returned as a PNG data URI, the same format as an
+   uploaded image. Serialised into the PSEAF file, so it works there too.
    ===================================================================== */
-function pseafDrawSignature(onDone){
+function pseafDrawSignature(onDone, signer){
   const ov = document.createElement('div');
   ov.className = 'sigpad-ov';
   ov.setAttribute('role', 'dialog');
   ov.setAttribute('aria-modal', 'true');
-  ov.setAttribute('aria-label', 'Draw signature');
+  ov.setAttribute('aria-label', 'Sign with your finger');
   ov.innerHTML = '<div class="sigpad">'
-    + '<div class="sigpad-head"><b>Sign below</b><span>Use your finger or a stylus. Turn your phone sideways for more room.</span></div>'
-    + '<canvas class="sigpad-cv"></canvas>'
+    + '<div class="sigpad-head">'
+    +   '<b>Sign with your finger</b>'
+    +   (signer ? '<span class="sigpad-who"></span>' : '')
+    +   '<span class="sigpad-tip">Turn your phone sideways for more room.</span>'
+    + '</div>'
+    + '<div class="sigpad-area">'
+    +   '<canvas class="sigpad-cv" aria-label="Signature area"></canvas>'
+    +   '<div class="sigpad-line" aria-hidden="true"><span>&times;</span></div>'
+    +   '<div class="sigpad-ph" aria-hidden="true">Sign here</div>'
+    + '</div>'
+    + '<div class="sigpad-msg" aria-live="polite"></div>'
     + '<div class="sigpad-actions">'
     +   '<button type="button" class="btn-ghost" data-act="clear">Clear</button>'
     +   '<button type="button" class="btn-ghost" data-act="cancel">Cancel</button>'
-    +   '<button type="button" class="btn" data-act="save">Use signature</button>'
+    +   '<button type="button" class="btn" data-act="save" disabled>Use signature</button>'
     + '</div></div>';
+  if(signer){ ov.querySelector('.sigpad-who').textContent = 'Signing as ' + signer; }
   document.body.appendChild(ov);
   document.body.classList.add('sigpad-open');
 
-  const cv = ov.querySelector('canvas');
-  const ctx = cv.getContext('2d');
-  let drawing = false, drawn = false, last = null;
+  const cv   = ov.querySelector('canvas');
+  const ctx  = cv.getContext('2d');
+  const msg  = ov.querySelector('.sigpad-msg');
+  const save = ov.querySelector('[data-act="save"]');
+  const ph   = ov.querySelector('.sigpad-ph');
+  const INK  = '#0d1b3e';
+  let drawn = false, active = null, pts = [];
+  let strokes = [];   /* kept so the signature survives a resize or rotation */
 
+  function setDrawn(v){
+    drawn = v;
+    save.disabled = !v;
+    ph.style.display = v ? 'none' : '';
+  }
+  function style(){
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = INK; ctx.fillStyle = INK;
+  }
   function size(){
     const r = cv.getBoundingClientRect();
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-    const snap = drawn ? cv.toDataURL('image/png') : null;
-    cv.width = Math.round(r.width * dpr);
-    cv.height = Math.round(r.height * dpr);
+    cv.width  = Math.max(1, Math.round(r.width * dpr));
+    cv.height = Math.max(1, Math.round(r.height * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0d1b3e';
-    if(snap){ const im = new Image(); im.onload = function(){ ctx.drawImage(im, 0, 0, r.width, r.height); }; im.src = snap; }
+    style();
+    redraw();
   }
+  /* Strokes are stored as fractions of the pad size, so rotating the phone
+     rescales the signature rather than losing it. */
+  function redraw(){
+    const r = cv.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+    strokes.forEach(function(s){
+      paint(s.map(function(p){ return { x:p.x * r.width, y:p.y * r.height, w:p.w }; }));
+    });
+  }
+  /* Smooth line through the points using midpoint quadratic curves, with
+     a slightly thinner line when the finger moves fast. */
+  function paint(list){
+    if(!list.length){ return; }
+    if(list.length === 1){
+      ctx.beginPath(); ctx.arc(list[0].x, list[0].y, 1.3, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    for(let i = 1; i < list.length; i++){
+      const a = list[i - 1], b = list[i];
+      const prev = list[i - 2] || a;
+      ctx.lineWidth = b.w;
+      ctx.beginPath();
+      ctx.moveTo((prev.x + a.x) / 2, (prev.y + a.y) / 2);
+      ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+      ctx.stroke();
+    }
+  }
+  function point(e){
+    const r = cv.getBoundingClientRect();
+    return { x:e.clientX - r.left, y:e.clientY - r.top, t:e.timeStamp || Date.now() };
+  }
+  function widthFor(p, q){
+    if(!q){ return 2.6; }
+    const v = Math.hypot(p.x - q.x, p.y - q.y) / Math.max(1, p.t - q.t);
+    return Math.max(1.6, Math.min(3.2, 3.2 - v * 0.9));
+  }
+
+  cv.addEventListener('pointerdown', function(e){
+    if(active !== null){ return; }        /* ignore a second finger */
+    e.preventDefault();
+    try { cv.setPointerCapture(e.pointerId); } catch(err){}
+    active = e.pointerId;
+    const p = point(e); p.w = 2.6;
+    pts = [p];
+    paint(pts);
+    msg.textContent = '';
+    setDrawn(true);
+  });
+  cv.addEventListener('pointermove', function(e){
+    if(e.pointerId !== active){ return; }
+    e.preventDefault();
+    const events = (typeof e.getCoalescedEvents === 'function' && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+    events.forEach(function(ev){
+      const p = point(ev);
+      const q = pts[pts.length - 1];
+      if(q && Math.hypot(p.x - q.x, p.y - q.y) < 0.8){ return; }
+      p.w = q ? (q.w * 0.6 + widthFor(p, q) * 0.4) : 2.6;
+      pts.push(p);
+      paint(pts.slice(-3));
+    });
+  });
+  function end(e){
+    if(e.pointerId !== active){ return; }
+    active = null;
+    const r = cv.getBoundingClientRect();
+    if(pts.length){
+      strokes.push(pts.map(function(p){ return { x:p.x / r.width, y:p.y / r.height, w:p.w }; }));
+    }
+    pts = [];
+  }
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+  /* Stop the page scrolling or zooming behind the pad on older iOS. */
+  cv.addEventListener('touchstart', function(e){ e.preventDefault(); }, { passive:false });
+  cv.addEventListener('touchmove',  function(e){ e.preventDefault(); }, { passive:false });
+
   size();
   window.addEventListener('resize', size);
 
-  function pt(e){ const r = cv.getBoundingClientRect(); return { x:e.clientX - r.left, y:e.clientY - r.top }; }
-  cv.addEventListener('pointerdown', function(e){
-    e.preventDefault(); cv.setPointerCapture(e.pointerId);
-    drawing = true; last = pt(e);
-    ctx.beginPath(); ctx.arc(last.x, last.y, 1.1, 0, Math.PI * 2); ctx.fillStyle = '#0d1b3e'; ctx.fill();
-    drawn = true;
-  });
-  cv.addEventListener('pointermove', function(e){
-    if(!drawing){ return; }
-    e.preventDefault();
-    const p = pt(e);
-    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-    last = p; drawn = true;
-  });
-  function end(){ drawing = false; }
-  cv.addEventListener('pointerup', end);
-  cv.addEventListener('pointercancel', end);
-
   function close(){
     window.removeEventListener('resize', size);
+    document.removeEventListener('keydown', onKey);
     document.body.classList.remove('sigpad-open');
     ov.remove();
   }
+  function onKey(e){ if(e.key === 'Escape'){ close(); } }
+  document.addEventListener('keydown', onKey);
+
   /* Crop to the inked area and cap the size, matching the upload route. */
   function trimmed(){
     const w = cv.width, h = cv.height;
@@ -1852,8 +1943,10 @@ function pseafDrawSignature(onDone){
         }
       }
     }
-    if(x1 < 0){ return ''; }
-    const pad = 6;
+    if(x1 < 0){ return { url:'', w:0 }; }
+    const dpr = cv.width / Math.max(1, cv.getBoundingClientRect().width);
+    const inkW = (x1 - x0) / dpr, inkH = (y1 - y0) / dpr;
+    const pad = Math.round(6 * dpr);
     x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
     x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
     const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
@@ -1862,19 +1955,30 @@ function pseafDrawSignature(onDone){
     out.width = Math.max(1, Math.round(cw * scale));
     out.height = Math.max(1, Math.round(ch * scale));
     out.getContext('2d').drawImage(cv, x0, y0, cw, ch, 0, 0, out.width, out.height);
-    return out.toDataURL('image/png');
+    return { url:out.toDataURL('image/png'), w:Math.max(inkW, inkH) };
   }
+
   ov.addEventListener('click', function(e){
     const b = e.target.closest('[data-act]');
     if(!b){ return; }
     const act = b.getAttribute('data-act');
-    if(act === 'clear'){ ctx.clearRect(0, 0, cv.width, cv.height); drawn = false; }
-    else if(act === 'cancel'){ close(); }
-    else if(act === 'save'){
-      if(!drawn){ return; }
-      const url = trimmed();
+    if(act === 'clear'){
+      strokes = []; pts = [];
+      const r = cv.getBoundingClientRect();
+      ctx.clearRect(0, 0, r.width, r.height);
+      msg.textContent = '';
+      setDrawn(false);
+    } else if(act === 'cancel'){
       close();
-      if(url){ onDone(url); }
+    } else if(act === 'save'){
+      if(!drawn){ return; }
+      const res = trimmed();
+      if(!res.url || res.w < 30){
+        msg.textContent = 'That is too small to be a signature. Please sign across the box.';
+        return;
+      }
+      close();
+      onDone(res.url);
     }
   });
 }
@@ -1969,7 +2073,7 @@ function pseafDrawSignature(onDone){
         if(img){ img.src = r.sig; }
         row.classList.add('has-sig');
         const cta = row.querySelector('.pseaf-sigcta');
-        if(cta){ cta.textContent = 'Replace signature'; }
+        if(cta){ cta.textContent = 'or upload an image'; }
       }
     });
   }

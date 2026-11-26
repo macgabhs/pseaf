@@ -3,7 +3,7 @@
    The page itself is fetched network-first so updates arrive whenever
    there is a connection; everything else is served from the cache.
    Bump CACHE when releasing a new version. */
-const CACHE = 'awn-pseaf-1.0';
+const CACHE = 'awn-pseaf-1.1';
 const ASSETS = [
   './',
   './index.html',
