@@ -387,6 +387,13 @@
   @media(max-width:640px){.wrap{padding-left:14px;padding-right:14px;}.card{padding:18px 16px;}.summary dl{grid-template-columns:1fr;}}
   .pseaf-sig.has-sig .pseaf-sigclear{font-size:.8rem;color:var(--grey);text-decoration:underline;padding:4px 2px;}
   .pseaf-sig.has-sig .pseaf-sigclear::after{content:' Remove signature';}
+  .pwa-toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--seafoam);color:#fff;font-size:.9rem;font-weight:600;padding:11px 18px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.2);opacity:0;transition:opacity .3s,transform .3s;z-index:1100;pointer-events:none;}
+  .pwa-toast.show{opacity:1;transform:translate(-50%,0);}
+  .pwa-gps{display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#fff;color:var(--ultramarine);border:1px solid var(--ultramarine);border-radius:8px;padding:10px 14px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px;}
+  .pwa-gps:disabled{opacity:.55;cursor:wait;}
+  .pwa-gps-msg{font-size:.8rem;color:var(--grey);margin-top:6px;min-height:1em;}
+  .pwa-gps-msg.ok{color:var(--seafoam);}
+  .pwa-gps-msg.bad{color:#a04a00;}
 
 </style>
 </head>
@@ -422,17 +429,11 @@
         <strong>New PSEAF</strong>
         <small>Start a new safety and environmental assessment for a project.</small>
       </button>
-      <button type="button" class="mode-card mode-open" id="chooseOpen">
-        <strong>Continue an existing PSEAF file</strong>
-        <small>Open a PSEAF file from the project folder, email or device, for example one prepared in the office, and complete the on-site assessment. A new version is created.</small>
-      </button>
       <button type="button" class="mode-card mode-last" id="chooseLast" hidden>
         <strong>Share the last completed PSEAF</strong>
         <small id="lastName"></small>
       </button>
     </div>
-    <input type="file" id="openFile" accept=".html,.htm,text/html" hidden>
-    <div class="status" id="openMsg" aria-live="polite"></div>
   </div>
 
   <!-- ===== FORM ===== -->
@@ -461,7 +462,7 @@
 
   <footer class="page-foot"><div class="bar"></div>
     AWN Consulting Ltd, The Tecpro Building, IDA Business &amp; Technology Park, Clonshaugh, Dublin 17, D17 XD90 &nbsp;|&nbsp; A Trinity Consultants company
-    <div class="version">PSEAF Field App 1.1 &nbsp;|&nbsp; EHS-P-001-F1</div>
+    <div class="version">PSEAF Field App 1.3 &nbsp;|&nbsp; EHS-P-001-F1</div>
   </footer>
 </div>
 <script src="app.js"></script>

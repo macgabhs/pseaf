@@ -1,5 +1,6 @@
-/* AWN PSEAF Field App - app.js (version 1.1, built from Project Administration Portal 4.7) */
+/* AWN PSEAF Field App - app.js (version 1.3, built from Project Administration Portal 4.7) */
 'use strict';
+const APP_VERSION = '1.3';
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 /* =====================================================================
    PSEAF (Project Safety & Environmental Assessment Form) - EHS-P-001-F1
@@ -232,12 +233,10 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
   if(includeProjectFields){
     html += '<section class="card">'
       + '<h2><span class="num">'+(n)+'</span>Project details</h2>'
-      + '<p class="hint">Identify the project this assessment relates to.</p>'
+      + '<p class="hint">The project this assessment relates to, and who is completing it.</p>'
       + '<div class="grid">'
       + '<div class="field"><label for="'+p+'ProjNo">Project number<span class="req">*</span></label><input type="text" id="'+p+'ProjNo" placeholder="e.g. R267501.1234"></div>'
-      + '<div class="field"><label for="'+p+'Client">Client<span class="req">*</span></label><input type="text" id="'+p+'Client" placeholder="Client name"></div>'
-      + '<div class="field"><label for="'+p+'Pm">Project Manager<span class="req">*</span></label><input type="text" id="'+p+'Pm" placeholder="Name of Project Manager"></div>'
-      + '<div class="field full"><label for="'+p+'Folder">Project folder location on server<span class="req">*</span></label><input type="text" id="'+p+'Folder" placeholder="e.g. \\Contracts\\A\\AWN"></div>'
+      + '<div class="field"><label for="'+p+'Pm">Your name<span class="req">*</span></label><input type="text" id="'+p+'Pm" placeholder="Your full name" autocomplete="name"></div>'
       + '</div></section>';
     n++;
   }
@@ -248,7 +247,9 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
     + '<p class="hint">Where the work takes place and when the assessment was carried out.</p>'
     + '<div class="grid">'
     + '<div class="field full"><label for="'+p+'Desc">Project description<span class="req">*</span></label><input type="text" id="'+p+'Desc" placeholder="Short description of the works"></div>'
-    + '<div class="field"><label for="'+p+'Site">Site location<span class="req">*</span></label><input type="text" id="'+p+'Site" placeholder="Site address / location"></div>'
+    + '<div class="field full"><label for="'+p+'Site">Site location<span class="req">*</span></label><input type="text" id="'+p+'Site" placeholder="Site address / location">'
+    +   '<button type="button" class="pwa-gps" id="'+p+'GpsBtn"><span aria-hidden="true">&#128205;</span> Use my current location</button>'
+    +   '<div class="pwa-gps-msg" id="'+p+'GpsMsg" aria-live="polite"></div></div>'
     + '<div class="field"><label for="'+p+'Date">Assessment date<span class="req">*</span></label><input type="date" id="'+p+'Date"></div>'
     + '</div>'
     + '</section>';
@@ -1225,10 +1226,9 @@ function pseafPdfHtml(d){
   + '<div class="sub">Project Safety &amp; Environmental Assessment Form &middot; EHS-P-001-F1 &middot; A Trinity Consultants Company</div></div>'
   + sec('Project details')
   + '<table class="meta">'
-  + row('Project number', d.projNo) + row('Client', d.client)
+  + row('Project number', d.projNo)
   + row('Project description', d.desc) + row('Site location', d.site)
-  + row('Project Manager', d.pm) + row('Assessment date', d.date)
-  + row('Project folder', d.folder)
+  + row('Completed by', d.pm) + row('Assessment date', d.date)
   + '</table>'
 
   + sec('Site specific risk assessment')
@@ -1983,6 +1983,38 @@ function pseafDrawSignature(onDone, signer){
   });
 }
 
+
+/* =====================================================================
+   COMPLETED PSEAF RECORD
+   A static, read-only HTML file: the completed form with signatures
+   embedded. It contains no code and blocks all scripts and network
+   access through its own content security policy.
+   ===================================================================== */
+function pseafRecordFileName(d){
+  function clean(s, fallback){
+    const t = String(s || '').trim().replace(/[\\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim().replace(/ /g, '-');
+    return t ? t.slice(0, 60) : fallback;
+  }
+  const date = String(d.date || '').replace(/[^0-9\-]/g, '') || new Date().toISOString().slice(0,10);
+  return clean(d.projNo, 'Project') + '_' + clean(d.desc, 'PSEAF') + '_PSEAF_' + date + '.html';
+}
+function pseafRecordHtml(d){
+  const css = ':root{--line:#e6e6e6;--shadow:0 2px 10px rgba(0,0,0,.13);}'
+    + 'html,body{margin:0;padding:0;background:#eef0f3;}'
+    + '.printhint{max-width:794px;margin:12px auto;padding:0 10px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#58595B;}'
+    + pseafRecordCss()
+    + '@media print{.printhint{display:none;}}'
+    + '@media(max-width:600px){#pseafStage .pdfpage{padding:16px 12px;}#pseafStage table.meta td.k{width:120px;}}';
+  return '<!DOCTYPE html>\n<html lang="en-GB">\n<head>\n<meta charset="UTF-8">\n'
+    + '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; style-src \'unsafe-inline\'">\n'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+    + '<title>PSEAF ' + escapeHtml(d.projNo || '') + ' ' + escapeHtml(d.desc || '') + ' | AWN Consulting</title>\n'
+    + '<style>' + css + '</style>\n</head>\n<body>\n'
+    + '<div class="printhint">Completed PSEAF, created with the AWN PSEAF Field App. To print or keep a PDF copy, use Print and choose Save as PDF.</div>\n'
+    + '<div id="recView"><div id="pseafStage">' + pseafPdfHtml(d) + '</div></div>\n'
+    + '</body>\n</html>';
+}
+
 /* =====================================================================
    PSEAF FIELD APP
    Standalone PSEAF for phones and tablets. Works offline once installed.
@@ -2009,7 +2041,6 @@ function pseafDrawSignature(onDone, signer){
   const btnSave    = document.getElementById('btnSaveFile');
   const formIntro  = document.getElementById('formIntro');
 
-  let history = [];       /* earlier versions when continuing a file */
   let built = false;
   let lastFile = null;    /* { name, html } */
   let saveTimer = null;
@@ -2038,6 +2069,7 @@ function pseafDrawSignature(onDone, signer){
   function ensureForm(){
     if(built){ return; }
     buildPseafSections(document.getElementById('psPseafHost'), P, 1, true);
+    wireGps();
     PSEAF_SIG_HOOKS[P] = function(){ psCheck(); queueSave(); };
     built = true;
   }
@@ -2084,7 +2116,7 @@ function pseafDrawSignature(onDone, signer){
     d = d || {};
     const c = d.contacts || {};
     suspendSave = true;
-    setVal('ProjNo', d.projNo); setVal('Client', d.client); setVal('Pm', d.pm); setVal('Folder', d.folder);
+    setVal('ProjNo', d.projNo); setVal('Pm', d.pm);
     setVal('Desc', d.desc); setVal('Site', d.site);
     setVal('Date', isNew ? new Date().toISOString().slice(0,10) : d.date);
     setVal('SiteRA', d.siteRA); setVal('KitOther', d.kitOther);
@@ -2117,11 +2149,60 @@ function pseafDrawSignature(onDone, signer){
     suspendSave = false;
   }
 
+  /* ---------------- your name ----------------
+     Remembered on this device so it is filled in next time. */
+  const USER_KEY = 'awn-pseaf-user';
+  function rememberUser(n){ if(n){ store(USER_KEY, n); } }
+  function prefillUser(){
+    const n = load(USER_KEY);
+    const el = document.getElementById(P+'Pm');
+    if(n && el && !el.value){ el.value = n; }
+    const first = document.querySelector('#'+P+'StaffRows .'+P+'StaffName');
+    if(n && first && !first.value){ first.value = n; }
+  }
+
+  /* ---------------- site location from the phone GPS ----------------
+     Uses the phone's location service, which works without mobile data.
+     The coordinates are written into the site location field; nothing is
+     sent anywhere. The user can edit the result. */
+  function wireGps(){
+    const btn = document.getElementById(P+'GpsBtn');
+    const msg = document.getElementById(P+'GpsMsg');
+    const site = document.getElementById(P+'Site');
+    if(!btn || !site){ return; }
+    if(!('geolocation' in navigator)){
+      btn.hidden = true;
+      return;
+    }
+    btn.addEventListener('click', function(){
+      btn.disabled = true;
+      msg.className = 'pwa-gps-msg';
+      msg.textContent = 'Finding your location. This can take up to 30 seconds outdoors.';
+      navigator.geolocation.getCurrentPosition(function(pos){
+        const lat = pos.coords.latitude.toFixed(5);
+        const lon = pos.coords.longitude.toFixed(5);
+        const acc = Math.round(pos.coords.accuracy || 0);
+        const gps = 'GPS ' + lat + ', ' + lon + (acc ? ' (accurate to ' + acc + ' m)' : '');
+        const cur = site.value.replace(/\s*[;,]?\s*GPS -?\d+\.\d+, -?\d+\.\d+( \(accurate to \d+ m\))?/, '').trim();
+        site.value = cur ? cur + '; ' + gps : gps;
+        site.dispatchEvent(new Event('input', { bubbles:true }));
+        msg.className = 'pwa-gps-msg ok';
+        msg.textContent = 'Location added' + (acc > 100 ? '. Accuracy is low, so move into the open and try again if needed.' : '.') + ' You can add an address or Eircode as well.';
+        btn.disabled = false;
+      }, function(err){
+        msg.className = 'pwa-gps-msg bad';
+        msg.textContent = err && err.code === 1
+          ? 'Location access is turned off for this app. On iPhone: Settings, Privacy & Security, Location Services, Safari Websites. On Android: allow location for Chrome. Or type the location instead.'
+          : 'Could not get a GPS fix. Move into the open and try again, or type the location instead.';
+        btn.disabled = false;
+      }, { enableHighAccuracy:true, timeout:30000, maximumAge:60000 });
+    });
+  }
+
   /* ---------------- validation ---------------- */
-  const PS_REQUIRED = ['psProjNo','psClient','psPm','psFolder','psDesc','psSite','psDate','psSiteRA','pscOffice','pscLocal','pscEmerg','pscClient'];
+  const PS_REQUIRED = ['psProjNo','psPm','psDesc','psSite','psDate','psSiteRA','pscOffice','pscLocal','pscEmerg','pscClient'];
   const PS_LABELS = {
-    psProjNo:'Project number', psClient:'Client', psPm:'Project Manager',
-    psFolder:'Project folder location on server', psDesc:'Project description',
+    psProjNo:'Project number', psPm:'Your name', psDesc:'Project description',
     psSite:'Site location', psDate:'Assessment date', psSiteRA:'Site specific risk assessment',
     pscOffice:'Office contact', pscEmerg:'Emergency contact / next of kin',
     pscClient:'Client representative', pscLocal:'Local site emergency contact'
@@ -2165,7 +2246,7 @@ function pseafDrawSignature(onDone, signer){
     if(!built || suspendSave || completed || formView.hidden){ return; }
     let d;
     try { d = readPseaf(P); } catch(err){ return; }
-    const ok = store(DRAFT_KEY, { savedAt:new Date().toISOString(), history:history, data:d });
+    const ok = store(DRAFT_KEY, { savedAt:new Date().toISOString(), data:d });
     const el = document.getElementById('draftState');
     if(el){ el.textContent = ok ? 'Saved on this device ' + new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }) : 'Could not save on this device (storage full)'; }
   }
@@ -2213,27 +2294,20 @@ function pseafDrawSignature(onDone, signer){
 
   const INTRO_NEW = 'Complete each section below. Your answers are saved on this device as you go. '
     + 'When everything is complete, select <b>Complete PSEAF</b> to create the file, then share it to email, Box or OneDrive.';
-  function introContinue(v){
-    return 'Continuing an existing PSEAF. The answers from version ' + v + ' are filled in and today\'s date is set. '
-      + 'Update anything that has changed, tick the <b>Point of Work Check</b> on site and make sure everyone attending has signed. '
-      + 'Completing it creates version ' + (v + 1) + ' of the file, which keeps every earlier version.';
-  }
-
   document.getElementById('chooseNew').addEventListener('click', function(){
     if(load(DRAFT_KEY) && !confirm('Start a new PSEAF? The assessment in progress on this device will be discarded.')){ return; }
     drop(DRAFT_KEY);
-    history = [];
     resetForm();
+    prefillUser();
     openForm(INTRO_NEW);
     saveDraft();
   });
   document.getElementById('draftResume').addEventListener('click', function(){
     const draft = load(DRAFT_KEY);
     if(!draft || !draft.data){ refreshStart(); return; }
-    history = Array.isArray(draft.history) ? draft.history : [];
     resetForm();
     applyPrefill(draft.data, false);
-    openForm(history.length ? introContinue(history.length) : INTRO_NEW);
+    openForm(INTRO_NEW);
   });
   document.getElementById('draftDiscard').addEventListener('click', function(){
     if(!confirm('Discard the assessment in progress? This cannot be undone.')){ return; }
@@ -2244,42 +2318,6 @@ function pseafDrawSignature(onDone, signer){
     saveDraft();
     refreshStart();
     show(startView);
-  });
-
-  /* ---------------- continue an existing PSEAF file ----------------
-     The file is read as text and only its data is extracted: the
-     HISTORY array is parsed as JSON. Nothing in the file is executed. */
-  const openInput = document.getElementById('openFile');
-  document.getElementById('chooseOpen').addEventListener('click', function(){ openInput.click(); });
-  openInput.addEventListener('change', function(){
-    const f = openInput.files && openInput.files[0];
-    openInput.value = '';
-    if(!f){ return; }
-    const msg = document.getElementById('openMsg');
-    if(f.size > 15 * 1024 * 1024){ msg.textContent = 'That file is too large to be a PSEAF file.'; return; }
-    const reader = new FileReader();
-    reader.onload = function(){
-      const text = String(reader.result || '');
-      const m = text.match(/\nconst HISTORY = (\[[^\n]*\]);\n/);
-      let hist = null;
-      try { hist = m ? JSON.parse(m[1]) : null; } catch(err){ hist = null; }
-      const valid = Array.isArray(hist) && hist.length > 0 && hist.every(function(e){
-        return e && typeof e === 'object' && e.data && typeof e.data === 'object' && typeof e.version === 'number';
-      });
-      if(!valid){
-        msg.textContent = 'That does not look like a PSEAF file created by this app or the Project Administration Portal (version 4.4 or later).';
-        return;
-      }
-      if(load(DRAFT_KEY) && !confirm('Open this PSEAF? The assessment in progress on this device will be replaced.')){ return; }
-      msg.textContent = '';
-      history = hist;
-      resetForm();
-      applyPrefill(hist[hist.length - 1].data, true);
-      openForm(introContinue(hist.length));
-      saveDraft();
-    };
-    reader.onerror = function(){ msg.textContent = 'Could not read that file.'; };
-    reader.readAsText(f);
   });
 
   /* ---------------- complete, share and save ---------------- */
@@ -2321,6 +2359,7 @@ function pseafDrawSignature(onDone, signer){
     refreshStart();
     show(startView);
   });
+
   document.getElementById('chooseLast').addEventListener('click', function(){
     const last = load(LAST_KEY);
     if(!last){ return; }
@@ -2337,19 +2376,18 @@ function pseafDrawSignature(onDone, signer){
     psSubmit.disabled = true;
     try {
       const d = readPseaf(P);
-      const entry = { version:history.length + 1, savedAt:new Date().toISOString(), data:d };
-      const next = history.concat([entry]);
-      const name = pseafTemplateFileName(d, entry.version);
-      const html = pseafTemplateHtml(next, null);
-      lastFile = { name:name, html:html, savedAt:entry.savedAt };
+      const savedAt = new Date().toISOString();
+      const name = pseafRecordFileName(d);
+      const html = pseafRecordHtml(d);
+      lastFile = { name:name, html:html, savedAt:savedAt };
       const kept = store(LAST_KEY, lastFile);
       completed = true;
       clearTimeout(saveTimer);
       drop(DRAFT_KEY);
-      history = next;
+      rememberUser(d.pm);
       psStatus.textContent = 'PSEAF completed.';
       psStatus.classList.add('ok');
-      showShare(name + ' (version ' + entry.version + ') is ready. '
+      showShare(name + ' is ready. '
         + (canShareFile() ? 'Share it to email, Box, OneDrive or Teams, or save it to this device.' : 'Save it to this device, then attach or upload it.')
         + (kept ? '' : ' Note: it could not be kept on this device, so save or share it now.'));
     } catch(err){
@@ -2388,12 +2426,72 @@ function pseafDrawSignature(onDone, signer){
   const iosHint = document.getElementById('iosHint');
   if(!standalone && /iphone|ipad|ipod/i.test(navigator.userAgent)){ iosHint.hidden = false; }
 
-  if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-    window.addEventListener('load', function(){
-      navigator.serviceWorker.register('sw.js').catch(function(err){ console.warn('Offline support unavailable', err); });
-    });
+  /* ---------------- automatic updates ----------------
+     The worker is checked for updates on every launch, whenever the app
+     comes back to the foreground, and every 30 minutes while open. When a
+     new release takes over, the app reloads itself, but never while the
+     signing pad is open. Work in progress is saved first and reopened
+     automatically after the reload, so nothing is lost. */
+  const RESUME_FLAG = 'awn-pseaf-resume-after-update';
+  const VER_KEY = 'awn-pseaf-version';
+  let reloading = false;
+  let pendingReload = false;
+
+  function safeToReload(){ return !document.querySelector('.sigpad-ov'); }
+  function doReload(){
+    if(reloading){ return; }
+    if(!safeToReload()){ pendingReload = true; return; }
+    reloading = true;
+    const inForm = !formView.hidden && sharePanel.style.display !== 'block';
+    if(inForm){
+      clearTimeout(saveTimer);
+      saveDraft();
+      try { sessionStorage.setItem(RESUME_FLAG, '1'); } catch(err){}
+    }
+    location.reload();
   }
+  /* Retry a deferred reload once the signing pad closes. */
+  new MutationObserver(function(){
+    if(pendingReload && safeToReload()){ pendingReload = false; doReload(); }
+  }).observe(document.body, { childList:true });
+
+  function toast(text){
+    const t = document.createElement('div');
+    t.className = 'pwa-toast';
+    t.setAttribute('role', 'status');
+    t.textContent = text;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.classList.add('show'); }, 30);
+    setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); }, 400); }, 4000);
+  }
+
+  if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      /* First install: nothing to refresh. Later releases: reload. */
+      if(hadController){ doReload(); }
+    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache:'none' }).then(function(reg){
+      function check(){ if(navigator.onLine){ reg.update().catch(function(){}); } }
+      document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible'){ check(); } });
+      window.addEventListener('online', check);
+      setInterval(check, 30 * 60 * 1000);
+    }).catch(function(err){ console.warn('Offline support unavailable', err); });
+  }
+
+  /* Tell the user when a new version has arrived. */
+  (function(){
+    const now = APP_VERSION;
+    let before = null;
+    try { before = localStorage.getItem(VER_KEY); localStorage.setItem(VER_KEY, now); } catch(err){}
+    if(before && before !== now){ setTimeout(function(){ toast('Updated to version ' + now); }, 400); }
+  })();
 
   refreshStart();
   show(startView);
+
+  /* Reopen the assessment that was open before an automatic update. */
+  let resume = false;
+  try { resume = sessionStorage.getItem(RESUME_FLAG) === '1'; sessionStorage.removeItem(RESUME_FLAG); } catch(err){}
+  if(resume && load(DRAFT_KEY)){ document.getElementById('draftResume').click(); }
 })();
