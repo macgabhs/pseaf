@@ -8,7 +8,7 @@
      install it straight away and hand control to it; the app then
      reloads itself at a safe moment.
    BUILD is set by the build script. If you edit files by hand, change it. */
-const BUILD = '1.3-20261126171911';
+const BUILD = '1.4-20261126172500';
 const CACHE = 'awn-pseaf-' + BUILD;
 const CORE = ['./', './index.html', './app.js', './manifest.webmanifest'];
 const ICONS = ['./icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'];

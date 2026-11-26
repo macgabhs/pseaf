@@ -460,9 +460,23 @@
     </div>
   </div>
 
+  <!-- ===== CHANGE LOG ===== -->
+  <div id="viewChangelog" hidden>
+    <button type="button" class="back-link" id="clBack">&#8592; Back</button>
+    <h1 class="title" style="font-size:22px;margin-bottom:6px;">Change log</h1>
+    <div class="intro">What has changed in the PSEAF Field App, newest first.</div>
+    <div class="cl-wrap">
+<div class="cl-entry current"><div class="cl-head"><span class="cl-ver">1.4</span><span class="cl-title">Point of Work Check uses your name</span><span class="cl-now">current</span></div><ul class="cl-list"><li>The separate name field has been removed from the Point of Work Check.</li><li>The check is now recorded against <b>Your name</b> from Project details, and the completed PSEAF shows it as confirmed on site by that person.</li><li>If your name has not been entered, the check asks you to add it in Project details before the PSEAF can be completed.</li><li>Change log added. Tap the version number at the bottom of the screen to view it.</li></ul></div>
+<div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.3</span><span class="cl-title">Simpler form and GPS site location</span></div><ul class="cl-list"><li>Removed the option to continue an existing PSEAF file. The app now creates new PSEAFs only.</li><li>The completed PSEAF is a read-only record named with the project, description and date, and contains no code.</li><li>Removed the Client and Project folder fields.</li><li>Project Manager is now <b>Your name</b>, shown as Completed by. It is remembered on the device and filled in next time, along with the first sign-off name.</li><li>Added <b>Use my current location</b> under Site location, which adds GPS coordinates and their accuracy. Works without mobile data.</li></ul></div>
+<div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.2</span><span class="cl-title">Automatic updates</span></div><ul class="cl-list"><li>New versions install automatically when the app is opened with signal, and the app reloads itself.</li><li>Work in progress is saved before an update and reopened afterwards. The app never updates while the signing pad is open.</li><li>A short message confirms when the app has been updated.</li></ul></div>
+<div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.1</span><span class="cl-title">Sign with your finger</span></div><ul class="cl-list"><li><b>Sign with finger</b> is now the main way to sign, with a full-screen signing pad on phones.</li><li>Smoother lines, a guide line to sign on, and the signature is kept if the phone is rotated.</li><li>Taps and very small marks are rejected. Uploading an image is still available.</li></ul></div>
+<div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.0</span><span class="cl-title">First release</span></div><ul class="cl-list"><li>PSEAF form for phones and tablets, installable to the home screen and usable offline.</li><li>Answers are saved on the device as you go and can be resumed.</li><li>The completed PSEAF is one file that can be shared to email, Box, OneDrive or Teams, or saved to the device.</li></ul></div>
+    </div>
+  </div>
+
   <footer class="page-foot"><div class="bar"></div>
     AWN Consulting Ltd, The Tecpro Building, IDA Business &amp; Technology Park, Clonshaugh, Dublin 17, D17 XD90 &nbsp;|&nbsp; A Trinity Consultants company
-    <div class="version">PSEAF Field App 1.3 &nbsp;|&nbsp; EHS-P-001-F1</div>
+    <div class="version"><button type="button" class="version-link" id="versionLink" title="View the change log">PSEAF Field App 1.4</button> &nbsp;|&nbsp; EHS-P-001-F1</div>
   </footer>
 </div>
 <script src="app.js"></script>

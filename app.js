@@ -1,6 +1,6 @@
-/* AWN PSEAF Field App - app.js (version 1.3, built from Project Administration Portal 4.7) */
+/* AWN PSEAF Field App - app.js (version 1.4, built from Project Administration Portal 4.7) */
 'use strict';
-const APP_VERSION = '1.3';
+const APP_VERSION = '1.4';
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 /* =====================================================================
    PSEAF (Project Safety & Environmental Assessment Form) - EHS-P-001-F1
@@ -404,7 +404,6 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
         : '<div class="pseaf-pow" id="'+p+'PowBlock">'
           + '<div class="pseaf-chk"><input type="checkbox" id="'+p+'Pow"><label for="'+p+'Pow"><b>Point of Work Check:</b> '+escapeHtml(PSEAF_POW_TEXT)+'</label></div>'
           + '<div class="grid">'
-          +   '<div class="field"><label for="'+p+'PowBy">Confirmed on site by</label><input type="text" id="'+p+'PowBy" placeholder="Name"></div>'
           +   '<div class="field"><label for="'+p+'PowAt">Date and time of check</label><input type="datetime-local" id="'+p+'PowAt"></div>'
           + '</div>'
           + '<div class="pseaf-req-msg" id="'+p+'PowMsg"></div>'
@@ -434,11 +433,6 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         at.value = now.toISOString().slice(0,16);
-      }
-      const by = document.getElementById(p+'PowBy');
-      if(by && !by.value.trim()){
-        const first = host.querySelector('.'+p+'StaffName');
-        if(first && first.value.trim()){ by.value = first.value.trim(); }
       }
     });
   }
@@ -885,24 +879,23 @@ function pseafSubVerifyState(p){
 function pseafPowState(p){
   const cb = document.getElementById(p+'Pow');
   if(!cb){ return { present:false, ticked:false, ok:true }; }
-  const by  = document.getElementById(p+'PowBy');
+  const by  = document.getElementById(p+'Pm');   /* Your name, section 1 */
   const at  = document.getElementById(p+'PowAt');
   const msg = document.getElementById(p+'PowMsg');
   const ticked = cb.checked;
   const hasBy = !!(by && by.value.trim());
   const hasAt = !!(at && at.value);
   const ok = !ticked || (hasBy && hasAt);
-  reqMark(by, ticked && !hasBy);
   reqMark(at, ticked && !hasAt);
   if(msg){
     if(!ticked){
       msg.textContent = 'Tick this on site on the day of the visit. If left unticked, the completed PSEAF records the point of work check as not completed.';
       msg.className = 'pseaf-req-msg';
     } else if(!ok){
-      msg.textContent = 'Enter who carried out the point of work check and when.';
+      msg.textContent = !hasBy ? 'Enter your name in Project details. It is used for the point of work check.' : 'Enter the date and time of the check.';
       msg.className = 'pseaf-req-msg show';
     } else {
-      msg.textContent = 'Point of work check recorded.';
+      msg.textContent = 'Point of work check recorded for ' + by.value.trim() + '.';
       msg.className = 'pseaf-req-msg ok';
     }
   }
@@ -1147,7 +1140,7 @@ function readPseaf(p, override){
     contacts:{ office:v('cOffice')||'018474220', emerg:v('cEmerg')||'(not given)', client:v('cClient')||'N/A',
                local:v('cLocal')||'(not given)' },
     subVerify:{ done:c('SubVerify'), by:v('SubVerifyBy'), date:v('SubVerifyDate') },
-    pow:{ present:!!document.getElementById(p+'Pow'), done:c('Pow'), by:v('PowBy'), at:v('PowAt') },
+    pow:{ present:!!document.getElementById(p+'Pow'), done:c('Pow'), by:v('Pm'), at:v('PowAt') },
     kit:kit, lone:lone, staff:staff, subNames:subNames, subSigned:subRowsSigned,
     subUsed:subUsed, loneUsed:loneUsed, nightWorking:nightWorking, nightJust:nightJust,
     subAnswered:(gv('SubUsed') !== ''), loneAnswered:(gv('LoneUsed') !== ''),
@@ -1643,7 +1636,7 @@ function pseafFileRuntime(){
     setVal('cClient', c.client);
     setVal('cLocal',  c.local  === '(not given)' ? '' : c.local);
     if(d.subVerify){ setCheck('SubVerify', d.subVerify.done); setVal('SubVerifyBy', d.subVerify.by); setVal('SubVerifyDate', d.subVerify.date); }
-    if(!isNew && d.pow && d.pow.done){ setCheck('Pow', true); setVal('PowBy', d.pow.by); setVal('PowAt', d.pow.at); }
+    if(!isNew && d.pow && d.pow.done){ setCheck('Pow', true); setVal('PowAt', d.pow.at); }
     (d.activities || []).forEach(function(name){
       var a = PSEAF_ACTIVITIES.filter(function(x){ return x.name === name; })[0];
       if(a){ setCheck('act_'+a.id, true); }
@@ -2127,7 +2120,7 @@ function pseafRecordHtml(d){
     setVal('cClient', c.client);
     setVal('cLocal',  c.local === '(not given)' ? '' : c.local);
     if(d.subVerify){ setCheck('SubVerify', d.subVerify.done); setVal('SubVerifyBy', d.subVerify.by); setVal('SubVerifyDate', d.subVerify.date); }
-    if(!isNew && d.pow && d.pow.done){ setCheck('Pow', true); setVal('PowBy', d.pow.by); setVal('PowAt', d.pow.at); }
+    if(!isNew && d.pow && d.pow.done){ setCheck('Pow', true); setVal('PowAt', d.pow.at); }
     (d.activities || []).forEach(function(name){
       const a = PSEAF_ACTIVITIES.filter(function(x){ return x.name === name; })[0];
       if(a){ setCheck('act_'+a.id, true); }
@@ -2222,7 +2215,7 @@ function pseafRecordHtml(d){
     const subV = pseafSubVerifyState(P);
     if(!subV.ok){ outstanding.push(subV.ticked ? 'Subcontractor verification: name and date' : 'Confirm subcontractor RAMS and insurance reviewed and approved'); }
     const pow = pseafPowState(P);
-    if(!pow.ok){ outstanding.push('Point of work check: name and date and time'); }
+    if(!pow.ok){ outstanding.push('Point of work check: your name and the date and time'); }
     const loneQ = pseafLoneState(P);
     if(!loneQ.ok){ outstanding.push('Lone working questions (' + loneQ.answered + ' of ' + loneQ.total + ' answered)'); }
     const night = pseafNightState(P);
@@ -2260,9 +2253,12 @@ function pseafRecordHtml(d){
   window.addEventListener('pagehide', saveDraft);
 
   /* ---------------- views ---------------- */
+  const clView = document.getElementById('viewChangelog');
+  let clReturn = null;
   function show(view){
     startView.hidden = view !== startView;
     formView.hidden  = view !== formView;
+    clView.hidden    = view !== clView;
     window.scrollTo(0, 0);
   }
   function openForm(intro){
@@ -2486,6 +2482,18 @@ function pseafRecordHtml(d){
     try { before = localStorage.getItem(VER_KEY); localStorage.setItem(VER_KEY, now); } catch(err){}
     if(before && before !== now){ setTimeout(function(){ toast('Updated to version ' + now); }, 400); }
   })();
+
+  /* Change log: opened from the version number in the footer. */
+  document.getElementById('versionLink').addEventListener('click', function(){
+    if(!clView.hidden){ return; }
+    if(!formView.hidden){ saveDraft(); }
+    clReturn = formView.hidden ? startView : formView;
+    show(clView);
+  });
+  document.getElementById('clBack').addEventListener('click', function(){
+    if(clReturn === startView){ refreshStart(); }
+    show(clReturn || startView);
+  });
 
   refreshStart();
   show(startView);
