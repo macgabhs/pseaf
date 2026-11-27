@@ -1,6 +1,6 @@
-/* AWN PSEAF Field App - app.js (version 1.4, built from Project Administration Portal 4.7) */
+/* AWN PSEAF Field App - app.js (version 1.7, built from Project Administration Portal 4.7) */
 'use strict';
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.7';
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 /* =====================================================================
    PSEAF (Project Safety & Environmental Assessment Form) - EHS-P-001-F1
@@ -22,7 +22,7 @@ const PSEAF_STANDARD_CONTACTS = [
   ["ESB Networks","1850 372 999"],
   ["EPA Incident Hotline (environment)","1890 33 55 999"]
 ];
-const PSEAF_POW_TEXT = "I confirm I am on-site, I have visually assessed the physical site conditions today, and they match the desktop assessment outlined in the site specific risk assessment of this form, with no new or unexpected hazards present.";
+const PSEAF_POW_TEXT = "I confirm I am on-site, I have visually assessed the physical site conditions today, and no new or unexpected hazards are present.";
 const PSEAF_SUB_VERIFY_TEXT = "I confirm, as the Project Manager or Lead Consultant on site, that each subcontractor's RAMS and insurance have been reviewed and approved before work commences.";
 const PSEAF_AE_SYNC = {};
 const PSEAF_DECLARATION = [
@@ -198,6 +198,8 @@ const PSEAF_REVEAL_SYNC = {};
 const PSEAF_OPTS = {};
 const PSEAF_ADD_ROW = {};
 const PSEAF_RENUMBER = {};
+const PSEAF_PHOTOS = {};      /* p -> [{ src, caption, takenAt }] */
+const PSEAF_PHOTO_MAX = 5;
 /* opts:
      skipKit         - omit the Essential kit checklist
      skipLone        - omit the Lone working assessment
@@ -269,6 +271,18 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
     + '<div class="field" style="margin-top:14px;"><label for="'+p+'SiteRA">Site specific risk assessment<span class="req">*</span></label>'
     + '<textarea id="'+p+'SiteRA" rows="12" placeholder="Tick one or more activities above to insert suggested hazards and controls, or type your own site specific risk assessment here."></textarea>'
     + '<div class="pseaf-req-msg" id="'+p+'SiteRAMsg"></div></div>'
+    + '<div class="pwa-photos">'
+    +   '<h4 class="pseaf-sub" style="margin-top:16px;">Site photos <span class="pwa-opt">(optional, up to '+PSEAF_PHOTO_MAX+')</span></h4>'
+    +   '<p class="hint" style="margin-left:0;">Add photos of the site or any hazards. They are included in the completed PSEAF.</p>'
+    +   '<div class="pwa-photo-btns">'
+    +     '<label class="pwa-photo-btn"><input type="file" accept="image/*" capture="environment" id="'+p+'PhotoCam" hidden>'
+    +       '<span aria-hidden="true">&#128247;</span> Take photo</label>'
+    +     '<label class="pwa-photo-btn ghost"><input type="file" accept="image/*" multiple id="'+p+'PhotoPick" hidden>'
+    +       '<span aria-hidden="true">&#128206;</span> Attach photo</label>'
+    +   '</div>'
+    +   '<div class="pwa-photo-msg" id="'+p+'PhotoMsg" aria-live="polite"></div>'
+    +   '<div class="pwa-photo-list" id="'+p+'PhotoList"></div>'
+    + '</div>'
     + '<div class="grid" style="margin-top:16px;">'
     + '<div class="field"><label for="'+p+'SpecProc">Project specific procedures (if required)</label><input type="text" id="'+p+'SpecProc"></div>'
     + '<div class="field"><label for="'+p+'SpecRA">Project specific risk assessment (if required)</label><input type="text" id="'+p+'SpecRA"></div>'
@@ -413,11 +427,11 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
     + '<p class="hint" style="margin-left:0;" id="'+p+'StaffHint">'
     +   (opts.siteWorkGate
           ? 'Confirm your details here'
-          : 'Record everyone working on the project, including the Project Manager. Enter the name and contact number for each person and ask them to sign with their finger on screen.')
+          : 'Sign below with your finger to confirm the declaration above.')
     + '</p>'
+    + '<div class="pwa-signer" id="'+p+'Signer"></div>'
     + '<div id="'+p+'StaffRows"></div>'
     + '<div class="pseaf-req-msg" id="'+p+'StaffMsg"></div>'
-    + '<button type="button" class="btn-ghost" id="'+p+'AddStaff">+ Add person</button>'
     + '</section>';
 
   host.innerHTML = html;
@@ -729,7 +743,7 @@ function buildPseafSections(host, p, startNum, includeProjectFields, opts){
     c.appendChild(row);
   }
   PSEAF_ADD_ROW[p] = addRow;
-  document.getElementById(p+'AddStaff').addEventListener('click',function(){ addRow(p+'StaffRows', p+'StaffName','Name'); });
+
   document.getElementById(p+'AddSub').addEventListener('click',function(){ addRow(p+'SubRows', p+'SubName','Subcontractor name / company', true); });
   addRow(p+'StaffRows', p+'StaffName','Name');
   addRow(p+'SubRows',   p+'SubName','Subcontractor name / company', true);
@@ -759,11 +773,10 @@ function pseafStaffState(p){
     const hasSig  = !!row.dataset.sig;
     if(hasName) named++;
     if(hasName && hasSig) signed++;
-    if(hasName && hasCon) contacted++;
+    if(hasName) contacted++;   /* contact number no longer collected */
     if(hasName !== hasSig) incomplete++;
     if(hasName && !hasSig){ row.classList.add('needs-sig'); } else { row.classList.remove('needs-sig'); }
-    /* Contact is captured here now that the standalone PM number is gone. */
-    reqMark(conEl, hasName && !hasCon);
+
   });
   return { total:total, named:named, signed:signed, contacted:contacted, incomplete:incomplete,
            ok:(named > 0 && signed === named && contacted === named && incomplete === 0) };
@@ -774,16 +787,16 @@ function pseafStaffMessage(p){
   const el = document.getElementById(p+'StaffMsg');
   if(!el){ return st; }
   if(st.named === 0){
-    el.textContent = 'At least one member of staff must be recorded and signed off.';
+    el.textContent = 'Enter your name in Project details, then sign.';
     el.className = 'pseaf-req-msg show';
   } else if(st.contacted < st.named){
     el.textContent = (st.named - st.contacted) + ' of ' + st.named + ' recorded staff still need a contact number.';
     el.className = 'pseaf-req-msg show';
   } else if(st.signed < st.named){
-    el.textContent = (st.named - st.signed) + ' of ' + st.named + ' recorded staff still need to sign.';
+    el.textContent = 'Please sign to confirm the declaration.';
     el.className = 'pseaf-req-msg show';
   } else {
-    el.textContent = st.signed + ' of ' + st.named + ' staff recorded with contact details and signature.';
+    el.textContent = 'Signed.';
     el.className = 'pseaf-req-msg ok';
   }
   return st;
@@ -1140,6 +1153,7 @@ function readPseaf(p, override){
     contacts:{ office:v('cOffice')||'018474220', emerg:v('cEmerg')||'(not given)', client:v('cClient')||'N/A',
                local:v('cLocal')||'(not given)' },
     subVerify:{ done:c('SubVerify'), by:v('SubVerifyBy'), date:v('SubVerifyDate') },
+    photos:(PSEAF_PHOTOS[p] || []).map(function(x){ return { src:x.src, caption:x.caption || '', takenAt:x.takenAt || '' }; }),
     pow:{ present:!!document.getElementById(p+'Pow'), done:c('Pow'), by:v('Pm'), at:v('PowAt') },
     kit:kit, lone:lone, staff:staff, subNames:subNames, subSigned:subRowsSigned,
     subUsed:subUsed, loneUsed:loneUsed, nightWorking:nightWorking, nightJust:nightJust,
@@ -1175,12 +1189,11 @@ function pseafPdfHtml(d){
   }
   function signRow(r){
     return '<tr><td>'+escapeHtml(r.name)+'</td>'
-         + '<td>'+escapeHtml(r.contact || '')+'</td>'
          + sigCell(r.sig)+'</tr>';
   }
   let staffRows = d.staff.length
       ? d.staff.map(signRow).join('')
-      : '<tr><td>&nbsp;</td><td>&nbsp;</td><td class="sig">&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td><td class="sig">&nbsp;</td></tr>';
+      : '<tr><td>&nbsp;</td><td class="sig">&nbsp;</td></tr>';
   const subSigned = d.subSigned || d.subNames.map(function(n){ return { name:n, contact:'', sig:'' }; });
   /* Subcontractors are listed by name and contact only; they do not sign. */
   function subRow(r){
@@ -1230,6 +1243,7 @@ function pseafPdfHtml(d){
       : '')
   + '<table><tr><td>'+escapeHtml(d.siteRA || '(not given)').replace(/\n/g,'<br>')+'</td></tr></table>'
   + '<table><tr><td><b>Project specific procedures:</b> '+escapeHtml(d.specProc)+'</td><td><b>Project specific RA:</b> '+escapeHtml(d.specRA)+'</td></tr></table>'
+  + pseafPhotosHtml(d.photos)
 
   + sec('Subcontractors')
   + (d.subUsed
@@ -1284,7 +1298,7 @@ function pseafPdfHtml(d){
             + '<br>Confirmed on site by <b>'+escapeHtml(d.pow.by)+'</b> at <b>'+escapeHtml(String(d.pow.at).replace('T',' '))+'</b></div>'
           : '<div class="pow no">&#9744; <b>Point of Work Check: NOT COMPLETED.</b> This record does not confirm that site conditions were checked on the day.</div>'))
   + '<div class="decl">It is the responsibility of the Project Manager to ensure that all members of staff working on the project sign this declaration. I confirm that:<ul>'+declLi+'</ul></div>'
-  + '<table><tr><th>Name (staff)</th><th style="width:110px;">Contact</th><th style="width:170px;">Signed</th></tr>'+staffRows+'</table>'
+  + '<table><tr><th>Name</th><th style="width:200px;">Signed</th></tr>'+staffRows+'</table>'
 
   + deferredNote
   + '<div class="foot">AWN Consulting Limited, The Tecpro Building, IDA Business &amp; Technology Park, Clonshaugh, Dublin 17, D17 XD90 &middot; Registered in Ireland No. 319812 &middot; EHS-P-001-F1 PSEAF</div>'
@@ -1394,6 +1408,23 @@ function pseafTemplateFileName(d, version){
 
 /* Styles for the completed assessment as shown in, and printed from, the
    single PSEAF file. */
+/* Site photos for the completed record. Only genuine JPEG data URIs are
+   embedded, so nothing else can be injected through a photo. */
+function pseafPhotosHtml(photos){
+  const ok = (photos || []).filter(function(x){
+    return x && typeof x.src === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(x.src);
+  });
+  if(!ok.length){ return ''; }
+  let out = '<div class="lbl">Site photos</div><div class="photos">';
+  ok.forEach(function(x, i){
+    const when = x.takenAt ? String(x.takenAt).replace('T', ' ').slice(0, 16) : '';
+    out += '<figure class="photo"><img src="' + x.src + '" alt="Site photo ' + (i + 1) + '">'
+         + '<figcaption><b>Photo ' + (i + 1) + '</b>' + (x.caption ? ': ' + escapeHtml(x.caption) : '')
+         + (when ? '<span>' + escapeHtml(when) + '</span>' : '') + '</figcaption></figure>';
+  });
+  return out + '</div>';
+}
+
 function pseafRecordCss(){
   return ''
     + '@page{size:A4;margin:12mm;}'
@@ -1423,6 +1454,12 @@ function pseafRecordCss(){
     + '#pseafStage .pow{border:2px solid #0032A0;background:#f7f9fc;padding:8px 10px;font-size:10px;margin:6px 0 10px;}'
     + '#pseafStage .pow.no{border-color:#EF6323;background:#fff6f0;}'
     + '#pseafStage .foot{margin-top:18px;font-size:8px;color:#58595B;border-top:1px solid #C8C9C7;padding-top:7px;}'
+    + '#pseafStage .photos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 10px;}'
+    + '#pseafStage .photo{margin:0;border:1px solid #C8C9C7;padding:5px;break-inside:avoid;page-break-inside:avoid;}'
+    + '#pseafStage .photo img{display:block;width:100%;height:auto;max-height:340px;object-fit:contain;background:#f4f4f4;}'
+    + '#pseafStage .photo figcaption{font-size:9.5px;margin-top:4px;}'
+    + '#pseafStage .photo figcaption span{display:block;color:#58595B;font-size:8.5px;}'
+    + '@media(max-width:600px){#pseafStage .photos{grid-template-columns:1fr;}}'
     + '.rec-bar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:0 0 12px;}'
     + '.rec-bar .field{flex:1 1 260px;}'
     + '.rec-meta{font-size:.85rem;color:var(--grey);margin:0 0 14px;}'
@@ -2063,12 +2100,14 @@ function pseafRecordHtml(d){
     if(built){ return; }
     buildPseafSections(document.getElementById('psPseafHost'), P, 1, true);
     wireGps();
+    wirePhotos();
     PSEAF_SIG_HOOKS[P] = function(){ psCheck(); queueSave(); };
     built = true;
   }
   function resetForm(){
     completed = false;
     clearTimeout(saveTimer);
+    PSEAF_PHOTOS[P] = [];
     document.getElementById('psPseafHost').innerHTML = '';
     built = false;
     ensureForm();
@@ -2138,6 +2177,10 @@ function pseafRecordHtml(d){
     const subs = (d.subSigned && d.subSigned.length) ? d.subSigned
                : (d.subNames || []).map(function(n){ return { name:n, contact:'', sig:'' }; });
     fillRows('SubRows', 'SubName', 'Subcontractor name / company', subs, true);
+    PSEAF_PHOTOS[P] = (d.photos || []).filter(function(x){
+      return x && typeof x.src === 'string' && /^data:image\/jpeg;base64,/.test(x.src);
+    }).slice(0, PSEAF_PHOTO_MAX).map(function(x){ return { src:x.src, caption:x.caption || '', takenAt:x.takenAt || '' }; });
+    renderPhotos();
     if(typeof PSEAF_REVEAL_SYNC[P] === 'function'){ PSEAF_REVEAL_SYNC[P](); }
     suspendSave = false;
   }
@@ -2192,6 +2235,129 @@ function pseafRecordHtml(d){
     });
   }
 
+  /* ---------------- signature linked to Your name ----------------
+     One signature row; its hidden name is always Your name. Extra rows
+     (from older drafts) are removed. */
+  function syncSigner(){
+    const host = document.getElementById(P+'StaffRows');
+    if(!host){ return; }
+    const rows = host.querySelectorAll('.pseaf-sig');
+    for(let i = 1; i < rows.length; i++){ rows[i].remove(); }
+    const nameEl = host.querySelector('.'+P+'StaffName');
+    const pm = document.getElementById(P+'Pm');
+    const n = pm ? pm.value.trim() : '';
+    if(nameEl){ nameEl.value = n; }
+    const lbl = document.getElementById(P+'Signer');
+    if(lbl){ lbl.textContent = n ? 'Signing as ' + n : 'Enter your name in Project details first.'; lbl.classList.toggle('none', !n); }
+  }
+
+  /* ---------------- site photos ----------------
+     Take a photo with the camera or attach one from the phone. Each photo
+     is redrawn at no more than 1280 pixels on its longest side as a JPEG,
+     which keeps the PSEAF file small enough to email and removes the
+     hidden photo details (including GPS location) from the original. */
+  const PHOTO_MAX_PX = 1280;
+  const PHOTO_QUALITY = 0.72;
+  function photoList(){ return PSEAF_PHOTOS[P] || (PSEAF_PHOTOS[P] = []); }
+  function photoMsg(text, bad){
+    const m = document.getElementById(P+'PhotoMsg');
+    if(m){ m.textContent = text || ''; m.className = 'pwa-photo-msg' + (bad ? ' bad' : ''); }
+  }
+  function renderPhotos(){
+    const host = document.getElementById(P+'PhotoList');
+    if(!host){ return; }
+    const list = photoList();
+    host.innerHTML = '';
+    list.forEach(function(x, i){
+      const card = document.createElement('div');
+      card.className = 'pwa-photo';
+      const img = document.createElement('img');
+      img.src = x.src; img.alt = 'Site photo ' + (i + 1);
+      const cap = document.createElement('input');
+      cap.type = 'text'; cap.placeholder = 'Caption (optional)'; cap.maxLength = 140;
+      cap.value = x.caption || '';
+      cap.setAttribute('aria-label', 'Caption for photo ' + (i + 1));
+      cap.addEventListener('input', function(){ x.caption = cap.value; });
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'pwa-photo-del';
+      del.textContent = 'Remove';
+      del.setAttribute('aria-label', 'Remove photo ' + (i + 1));
+      del.addEventListener('click', function(){
+        list.splice(i, 1);
+        renderPhotos();
+        photoMsg('');
+        PSEAF_SIG_HOOKS[P] && PSEAF_SIG_HOOKS[P]();
+      });
+      const num = document.createElement('span');
+      num.className = 'pwa-photo-num'; num.textContent = 'Photo ' + (i + 1);
+      card.appendChild(img); card.appendChild(num); card.appendChild(cap); card.appendChild(del);
+      host.appendChild(card);
+    });
+    const full = list.length >= PSEAF_PHOTO_MAX;
+    ['PhotoCam', 'PhotoPick'].forEach(function(id){
+      const inp = document.getElementById(P+id);
+      if(inp){ inp.disabled = full; inp.parentNode.classList.toggle('disabled', full); }
+    });
+  }
+  function shrinkPhoto(file){
+    return new Promise(function(resolve, reject){
+      if(!file || !/^image\//.test(file.type || 'image/')){ reject(new Error('Not an image')); return; }
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = function(){
+        try {
+          const scale = Math.min(1, PHOTO_MAX_PX / Math.max(img.naturalWidth, img.naturalHeight));
+          const w = Math.max(1, Math.round(img.naturalWidth * scale));
+          const h = Math.max(1, Math.round(img.naturalHeight * scale));
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          const ctx = cv.getContext('2d');
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          resolve(cv.toDataURL('image/jpeg', PHOTO_QUALITY));
+        } catch(err){ URL.revokeObjectURL(url); reject(err); }
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('Unreadable image')); };
+      img.src = url;
+    });
+  }
+  async function addPhotos(files){
+    const list = photoList();
+    const room = PSEAF_PHOTO_MAX - list.length;
+    const take = Array.prototype.slice.call(files || [], 0, Math.max(0, room));
+    if(!take.length){ photoMsg('The maximum of ' + PSEAF_PHOTO_MAX + ' photos has been reached.', true); return; }
+    photoMsg('Adding photo' + (take.length > 1 ? 's' : '') + '...');
+    let added = 0, failed = 0;
+    for(const f of take){
+      try {
+        const src = await shrinkPhoto(f);
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        list.push({ src:src, caption:'', takenAt:now.toISOString().slice(0, 16) });
+        added++;
+      } catch(err){ console.warn(err); failed++; }
+    }
+    renderPhotos();
+    const skipped = (files ? files.length : 0) - take.length;
+    photoMsg((added ? added + ' photo' + (added > 1 ? 's' : '') + ' added.' : '')
+      + (failed ? ' ' + failed + ' could not be read.' : '')
+      + (skipped > 0 ? ' Only ' + PSEAF_PHOTO_MAX + ' photos can be included.' : ''), failed > 0 || skipped > 0);
+    PSEAF_SIG_HOOKS[P] && PSEAF_SIG_HOOKS[P]();
+  }
+  function wirePhotos(){
+    ['PhotoCam', 'PhotoPick'].forEach(function(id){
+      const inp = document.getElementById(P+id);
+      if(!inp){ return; }
+      inp.addEventListener('change', function(e){
+        e.stopPropagation();
+        const files = inp.files;
+        addPhotos(files).finally(function(){ inp.value = ''; });
+      });
+    });
+    renderPhotos();
+  }
+
   /* ---------------- validation ---------------- */
   const PS_REQUIRED = ['psProjNo','psPm','psDesc','psSite','psDate','psSiteRA','pscOffice','pscLocal','pscEmerg','pscClient'];
   const PS_LABELS = {
@@ -2202,6 +2368,7 @@ function pseafRecordHtml(d){
   };
   function psCheck(){
     if(!built){ return; }
+    syncSigner();
     const outstanding = [];
     reqCheckFields(PS_REQUIRED, PS_LABELS).forEach(function(l){ outstanding.push(l); });
     const gates = pseafGateState(P);
@@ -2222,9 +2389,7 @@ function pseafRecordHtml(d){
     if(!night.ok){ outstanding.push('Night-time lone working justification'); }
     const staff = pseafStaffMessage(P);
     if(!staff.ok){
-      outstanding.push(staff.named === 0
-        ? 'Record at least one member of staff with contact details and a signature'
-        : 'Contact details or signature missing for ' + Math.max(staff.named - staff.signed, staff.named - staff.contacted) + ' of ' + staff.named + ' staff');
+      outstanding.push(staff.named === 0 ? 'Your name (needed for the signature)' : 'Signature');
     }
     reqRenderPanel('psReqPanel', outstanding);
     const ok = outstanding.length === 0;

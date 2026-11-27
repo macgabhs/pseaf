@@ -7,8 +7,8 @@
    - BUILD changes on every release, so phones detect the new worker,
      install it straight away and hand control to it; the app then
      reloads itself at a safe moment.
-   BUILD is set by the build script. If you edit files by hand, change it. */
-const BUILD = '1.4-20261126172500';
+   If you edit files by hand, change BUILD. */
+const BUILD = '1.7-20261127094500';
 const CACHE = 'awn-pseaf-' + BUILD;
 const CORE = ['./', './index.html', './app.js', './manifest.webmanifest'];
 const ICONS = ['./icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'];
@@ -17,8 +17,6 @@ const TIMEOUT_MS = 4000;
 self.addEventListener('install', function(e){
   e.waitUntil(
     caches.open(CACHE).then(function(c){
-      /* cache:'reload' skips the HTTP cache so a release is never
-         installed with stale files from GitHub Pages' 10 minute cache. */
       return Promise.all(CORE.concat(ICONS).map(function(u){
         return fetch(new Request(u, { cache:'reload' })).then(function(res){
           if(!res.ok){ throw new Error('Could not fetch ' + u); }
@@ -47,7 +45,6 @@ function isCore(url){
   return p.endsWith('/') || p.endsWith('/index.html') || p.endsWith('/app.js') || p.endsWith('/manifest.webmanifest');
 }
 
-/* Network first, no HTTP cache, with a timeout and an offline fallback. */
 function networkFirst(req, key){
   return new Promise(function(resolve){
     let done = false;
@@ -81,16 +78,8 @@ self.addEventListener('fetch', function(e){
   if(req.method !== 'GET'){ return; }
   const url = new URL(req.url);
   if(url.origin !== self.location.origin){ return; }
-
-  if(req.mode === 'navigate'){
-    e.respondWith(networkFirst(req, './index.html'));
-    return;
-  }
-  if(isCore(url)){
-    e.respondWith(networkFirst(req, req));
-    return;
-  }
-  /* Icons and anything else: cache first. */
+  if(req.mode === 'navigate'){ e.respondWith(networkFirst(req, './index.html')); return; }
+  if(isCore(url)){ e.respondWith(networkFirst(req, req)); return; }
   e.respondWith(
     caches.match(req).then(function(hit){
       return hit || fetch(req).then(function(res){
