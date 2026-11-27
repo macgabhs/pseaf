@@ -1,6 +1,6 @@
-/* AWN PSEAF Field App - app.js (version 1.7, built from Project Administration Portal 4.7) */
+/* AWN PSEAF Field App - app.js (version 1.8, built from Project Administration Portal 4.7) */
 'use strict';
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.8';
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 /* =====================================================================
    PSEAF (Project Safety & Environmental Assessment Form) - EHS-P-001-F1
@@ -2029,7 +2029,7 @@ function pseafRecordFileName(d){
   return clean(d.projNo, 'Project') + '_' + clean(d.desc, 'PSEAF') + '_PSEAF_' + date + '.html';
 }
 function pseafRecordHtml(d){
-  const css = ':root{--line:#e6e6e6;--shadow:0 2px 10px rgba(0,0,0,.13);}'
+  const css = ':root{--line:#e6e6e6;--shadow:0 2px 10px rgba(0,0,0,.13);color-scheme:only light;}'
     + 'html,body{margin:0;padding:0;background:#eef0f3;}'
     + '.printhint{max-width:794px;margin:12px auto;padding:0 10px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#58595B;}'
     + pseafRecordCss()
@@ -2038,6 +2038,7 @@ function pseafRecordHtml(d){
   return '<!DOCTYPE html>\n<html lang="en-GB">\n<head>\n<meta charset="UTF-8">\n'
     + '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; style-src \'unsafe-inline\'">\n'
     + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+    + '<meta name="color-scheme" content="only light">\n'
     + '<title>PSEAF ' + escapeHtml(d.projNo || '') + ' ' + escapeHtml(d.desc || '') + ' | AWN Consulting</title>\n'
     + '<style>' + css + '</style>\n</head>\n<body>\n'
     + '<div class="printhint">Completed PSEAF, created with the AWN PSEAF Field App. To print or keep a PDF copy, use Print and choose Save as PDF.</div>\n'
