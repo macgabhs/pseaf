@@ -1,6 +1,6 @@
-/* AWN PSEAF Field App - app.js (version 1.8, built from Project Administration Portal 4.7) */
+/* AWN PSEAF Field App - app.js (version 1.9, built from Project Administration Portal 4.7) */
 'use strict';
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 /* =====================================================================
    PSEAF (Project Safety & Environmental Assessment Form) - EHS-P-001-F1
@@ -2253,9 +2253,8 @@ function pseafRecordHtml(d){
   }
 
   /* ---------------- site photos ----------------
-     Take a photo with the camera or attach one from the phone. Each photo
-     is redrawn at no more than 1280 pixels on its longest side as a JPEG,
-     which keeps the PSEAF file small enough to email and removes the
+     Each photo is redrawn at no more than 1280 pixels on its longest side
+     as a JPEG, which keeps the file small enough to email and removes the
      hidden photo details (including GPS location) from the original. */
   const PHOTO_MAX_PX = 1280;
   const PHOTO_QUALITY = 0.72;
@@ -2492,9 +2491,34 @@ function pseafRecordHtml(d){
     const f = fileObj();
     return !!(f && navigator.canShare && navigator.share && navigator.canShare({ files:[f] }));
   }
+  /* Android (Chrome) renames any file passed to the share sheet to a
+     random name such as share1234567890.html, and a web app cannot stop
+     this. On Android the file is therefore saved first, which keeps the
+     proper name, and then attached from Downloads. iPhone keeps the name,
+     so sharing stays the main option there. */
+  const IS_ANDROID = /Android/i.test(navigator.userAgent);
   function showShare(note){
     shareMsg.textContent = note;
-    btnShare.hidden = !canShareFile();
+    const canShare = canShareFile();
+    const howto = document.getElementById('shareHowto');
+    if(IS_ANDROID){
+      btnSave.className = 'btn';
+      btnSave.textContent = 'Save to device (keeps the file name)';
+      btnShare.className = 'btn-ghost';
+      btnShare.textContent = 'Share directly (Android renames the file)';
+      btnSave.parentNode.insertBefore(btnSave, btnShare);
+      if(howto){
+        howto.hidden = false;
+        howto.innerHTML = '<b>On Android:</b> save the file first so it keeps its name:'
+          + '<div class="share-name"></div>'
+          + '<ol><li>Tap <b>Save to device</b>. The file goes to your <b>Downloads</b> folder.</li>'
+          + '<li>In Outlook, start an email and attach it from Downloads, or upload it to Box or OneDrive from their app.</li></ol>';
+        howto.querySelector('.share-name').textContent = lastFile ? lastFile.name : '';
+      }
+    } else if(howto){
+      howto.hidden = true;
+    }
+    btnShare.hidden = !canShare;
     sharePanel.style.display = 'block';
     sharePanel.scrollIntoView({ behavior:'smooth', block:'start' });
   }
@@ -2503,7 +2527,9 @@ function pseafRecordHtml(d){
     if(!f){ return; }
     try {
       await navigator.share({ files:[f], title:lastFile.name, text:'PSEAF: ' + lastFile.name });
-      shareMsg.textContent = 'Shared. Make sure the file reaches the project folder.';
+      shareMsg.textContent = IS_ANDROID
+        ? 'Shared. Android may have renamed the file, so rename it to ' + lastFile.name + ' when saving it to the project folder.'
+        : 'Shared. Make sure the file reaches the project folder.';
     } catch(err){
       if(err && err.name === 'AbortError'){ return; }
       console.error(err);
@@ -2513,6 +2539,7 @@ function pseafRecordHtml(d){
   function doSave(){
     if(!lastFile){ return; }
     pseafSaveBlob(new Blob([lastFile.html], { type:'text/html;charset=utf-8' }), lastFile.name);
+    shareMsg.textContent = 'Saved as ' + lastFile.name + (IS_ANDROID ? ' in your Downloads folder. Attach it from there in Outlook, Box or OneDrive.' : '.');
   }
   btnShare.addEventListener('click', doShare);
   btnSave.addEventListener('click', doSave);
@@ -2550,7 +2577,8 @@ function pseafRecordHtml(d){
       psStatus.textContent = 'PSEAF completed.';
       psStatus.classList.add('ok');
       showShare(name + ' is ready. '
-        + (canShareFile() ? 'Share it to email, Box, OneDrive or Teams, or save it to this device.' : 'Save it to this device, then attach or upload it.')
+        + (IS_ANDROID ? 'Save it to this device, then attach it from Downloads.'
+           : canShareFile() ? 'Share it to email, Box, OneDrive or Teams, or save it to this device.' : 'Save it to this device, then attach or upload it.')
         + (kept ? '' : ' Note: it could not be kept on this device, so save or share it now.'));
     } catch(err){
       console.error(err);

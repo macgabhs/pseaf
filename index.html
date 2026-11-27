@@ -395,13 +395,6 @@
   .pwa-gps-msg{font-size:.8rem;color:var(--grey);margin-top:6px;min-height:1em;}
   .pwa-gps-msg.ok{color:var(--seafoam);}
   .pwa-gps-msg.bad{color:#a04a00;}
-  /* ---- Always light: opt out of Android/Chrome automatic dark mode ---- */
-  :root,html,body{color-scheme:only light;}
-  html,body{background:#fff;color:var(--ink);}
-  .sigpad,.sigpad-area,.sigpad-cv{background:#ffffff !important;forced-color-adjust:none;}
-  .sigpad-line{border-bottom-color:#9aa1b0 !important;}
-  .pseaf-sigimg,.pwa-photo img{forced-color-adjust:none;}
-  .pseaf-sigimg{background:#fff !important;}
   /* ---- Site photos ---- */
   .pwa-opt{font-weight:400;color:var(--grey);font-size:.8rem;}
   .pwa-photo-btns{display:flex;flex-wrap:wrap;gap:10px;}
@@ -418,6 +411,16 @@
   .pwa-photo input{font-size:16px;padding:8px 10px;}
   .pwa-photo-del{align-self:flex-start;background:none;border:none;padding:2px 0;color:#a04a00;text-decoration:underline;font-size:.8rem;cursor:pointer;font-family:inherit;}
   @media(max-width:620px){.pwa-photo-btn{flex:1 1 45%;padding:13px 12px;}.pwa-photo-list{grid-template-columns:1fr 1fr;}}
+  /* ---- Always light: opt out of Android/Chrome automatic dark mode ---- */
+  :root,html,body{color-scheme:only light;}
+  html,body{background:#fff;color:var(--ink);}
+  .sigpad,.sigpad-area,.sigpad-cv{background:#ffffff !important;forced-color-adjust:none;}
+  .sigpad-line{border-bottom-color:#9aa1b0 !important;}
+  .pseaf-sigimg,.pwa-photo img{forced-color-adjust:none;}
+  .pseaf-sigimg{background:#fff !important;}
+  .share-howto{font-size:.84rem;color:#333;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0 0 14px;}
+  .share-howto ol{margin:6px 0 0;padding-left:20px;}
+  .share-name{font-family:Consolas,Menlo,monospace;font-size:.85rem;word-break:break-all;}
   /* Single signature box: hide per-row name, contact, captions and row controls */
   #psStaffRows .pseaf-sig{display:block;border:none;background:none;padding:0;margin:0 0 8px;}
   #psStaffRows .pseaf-sig > input,
@@ -483,6 +486,7 @@
     <div class="share-panel" id="sharePanel" aria-live="polite">
       <h3>PSEAF file ready</h3>
       <p id="shareMsg"></p>
+      <div class="share-howto" id="shareHowto" hidden></div>
       <div class="row">
         <button type="button" class="btn" id="btnShare" hidden>Share (email, Box, OneDrive)</button>
         <button type="button" class="btn-ghost" id="btnSaveFile">Save to device</button>
@@ -497,7 +501,7 @@
     <h1 class="title" style="font-size:22px;margin-bottom:6px;">Change log</h1>
     <div class="intro">What has changed in the PSEAF Field App, newest first.</div>
     <div class="cl-wrap">
-<div class="cl-entry current"><div class="cl-head"><span class="cl-ver">1.8</span><span class="cl-title">Readable in dark mode</span><span class="cl-now">current</span></div><ul class="cl-list"><li>The app now always shows its light colours, even when the phone uses dark mode. This fixes the signing pad turning dark on Android, which made signatures hard to see.</li><li>The signing pad is always white with dark ink, and the completed PSEAF also stays light.</li></ul></div><div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.7</span><span class="cl-title">Site photos</span></div><ul class="cl-list"><li>New <b>Take photo</b> and <b>Attach photo</b> buttons below the site specific risk assessment. Up to 5 photos, each with an optional caption.</li><li>Photos are embedded in the completed PSEAF in a Site photos section, with the time each was added.</li><li>Photos are reduced in size so the PSEAF can be emailed, and hidden photo details such as GPS location are removed.</li><li>Photos are kept with the assessment in progress, so they are not lost if the app is closed.</li></ul></div><div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.6</span><span class="cl-title">Single person sign-off</span></div><ul class="cl-list"><li>Removed the option to add more staff. The form is completed and signed by the one person visiting site.</li><li>Point of Work Check wording updated to: I confirm I am on-site, I have visually assessed the physical site conditions today, and no new or unexpected hazards are present.</li></ul></div><div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.5</span><span class="cl-title">Signature box only</span></div><ul class="cl-list"><li>The staff sign-off is now a single signature box. The name and contact number fields have been removed.</li><li>The signature is recorded against <b>Your name</b> from Project details.</li><li>The completed PSEAF shows the name and signature only.</li></ul></div>
+<div class="cl-entry current"><div class="cl-head"><span class="cl-ver">1.9</span><span class="cl-title">File names on Android</span><span class="cl-now">current</span></div><ul class="cl-list"><li>Android renames files sent through the share sheet (for example share1234567890.html), and a web app cannot prevent this.</li><li>On Android, <b>Save to device</b> is now the main button. It keeps the proper file name (project number, description and date), and the app explains how to attach the file from Downloads.</li><li>Sharing directly is still available on Android, with a reminder of the correct file name. iPhone is unchanged.</li></ul></div><div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.8</span><span class="cl-title">Readable in dark mode</span></div><ul class="cl-list"><li>The app always shows its light colours, even when the phone uses dark mode. This fixes the signing pad turning dark on Android.</li><li>The signing pad is always white with dark ink, and the completed PSEAF also stays light.</li></ul></div><div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.7</span><span class="cl-title">Site photos</span></div><ul class="cl-list"><li>New <b>Take photo</b> and <b>Attach photo</b> buttons below the site specific risk assessment. Up to 5 photos, each with an optional caption.</li><li>Photos are embedded in the completed PSEAF, reduced in size, with hidden photo details such as GPS location removed.</li></ul></div><div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.6</span><span class="cl-title">Single person sign-off</span></div><ul class="cl-list"><li>Removed the option to add more staff. The form is completed and signed by the one person visiting site.</li><li>Point of Work Check wording updated to: I confirm I am on-site, I have visually assessed the physical site conditions today, and no new or unexpected hazards are present.</li></ul></div><div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.5</span><span class="cl-title">Signature box only</span></div><ul class="cl-list"><li>The staff sign-off is now a single signature box. The name and contact number fields have been removed.</li><li>The signature is recorded against <b>Your name</b> from Project details.</li><li>The completed PSEAF shows the name and signature only.</li></ul></div>
 <div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.4</span><span class="cl-title">Point of Work Check uses your name</span></div><ul class="cl-list"><li>The separate name field has been removed from the Point of Work Check.</li><li>The check is now recorded against <b>Your name</b> from Project details, and the completed PSEAF shows it as confirmed on site by that person.</li><li>If your name has not been entered, the check asks you to add it in Project details before the PSEAF can be completed.</li><li>Change log added. Tap the version number at the bottom of the screen to view it.</li></ul></div>
 <div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.3</span><span class="cl-title">Simpler form and GPS site location</span></div><ul class="cl-list"><li>Removed the option to continue an existing PSEAF file. The app now creates new PSEAFs only.</li><li>The completed PSEAF is a read-only record named with the project, description and date, and contains no code.</li><li>Removed the Client and Project folder fields.</li><li>Project Manager is now <b>Your name</b>, shown as Completed by. It is remembered on the device and filled in next time, along with the first sign-off name.</li><li>Added <b>Use my current location</b> under Site location, which adds GPS coordinates and their accuracy. Works without mobile data.</li></ul></div>
 <div class="cl-entry"><div class="cl-head"><span class="cl-ver">1.2</span><span class="cl-title">Automatic updates</span></div><ul class="cl-list"><li>New versions install automatically when the app is opened with signal, and the app reloads itself.</li><li>Work in progress is saved before an update and reopened afterwards. The app never updates while the signing pad is open.</li><li>A short message confirms when the app has been updated.</li></ul></div>
@@ -508,7 +512,7 @@
 
   <footer class="page-foot"><div class="bar"></div>
     AWN Consulting Ltd, The Tecpro Building, IDA Business &amp; Technology Park, Clonshaugh, Dublin 17, D17 XD90 &nbsp;|&nbsp; A Trinity Consultants company
-    <div class="version"><button type="button" class="version-link" id="versionLink" title="View the change log">PSEAF Field App 1.8</button> &nbsp;|&nbsp; EHS-P-001-F1</div>
+    <div class="version"><button type="button" class="version-link" id="versionLink" title="View the change log">PSEAF Field App 1.9</button> &nbsp;|&nbsp; EHS-P-001-F1</div>
   </footer>
 </div>
 <script src="app.js"></script>

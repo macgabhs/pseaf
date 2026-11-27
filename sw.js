@@ -4,7 +4,7 @@
    or if the network takes longer than 4 seconds. BUILD changes on every
    release so phones install it automatically. If you edit files by hand,
    change BUILD. */
-const BUILD = '1.8-20261127100500';
+const BUILD = '1.9-20261127101500';
 const CACHE = 'awn-pseaf-' + BUILD;
 const CORE = ['./', './index.html', './app.js', './manifest.webmanifest'];
 const ICONS = ['./icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'];
